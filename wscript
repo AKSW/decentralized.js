@@ -21,4 +21,4 @@ def configure(cfg):
     pass
 
 def build(bld):
-    pass
+    bld(features='subst', target='install.rdf', VERSION=VERSION)
