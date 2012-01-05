@@ -14,18 +14,24 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
+from waflib import Task
+from TaskGen import feature
+from zipfile import ZipFile, ZIP_DEFLATED
 
-APPNAME = 'decentralized.js'
-VERSION = '0.0'
+def zip_func(tsk):
+    outfile = tsk.outputs[0].abspath()
+    # ZipFile does not support incremental changes other than appending files,
+    # so the target file is truncated and recreated.
+    zip = ZipFile(outfile, 'w', ZIP_DEFLATED)
+    for x in tsk.inputs:
+        zip.write(x.abspath(), x.relpath())
+    zip.close()
 
-XPINAME = '%s@mirix.org.xpi' % APPNAME
+Task.task_factory('zip', zip_func, color='BLUE')
 
-def configure(cfg):
-    cfg.check_tool('zip', tooldir=os.path.abspath('waftools'))
-
-def build(bld):
-    bld(features='subst', source='install.rdf.in', target='install.rdf',
-        VERSION=VERSION)
-    bld(features='zip', source=['install.rdf'], target=XPINAME)
-    bld.install_files("${PREFIX}", XPINAME)
+@feature('zip')
+def process_zip(self):
+    src = self.to_nodes(getattr(self, 'source', []))
+    tgt = self.path.find_or_declare(getattr(self, 'target', []))
+    self.create_task('zip', src, tgt)
+    self.source = []
